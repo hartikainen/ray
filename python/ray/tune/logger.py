@@ -62,7 +62,7 @@ class UnifiedLogger(Logger):
 
     def _init(self):
         self._loggers = []
-        for cls in [_JsonLogger, _TFLogger, _VisKitLogger]:
+        for cls in [_JsonLogger, _VisKitLogger]:
             if cls is _TFLogger and tf is None:
                 logger.info("TF not installed - "
                             "cannot log with {}...".format(cls))
