@@ -250,8 +250,8 @@ def get_or_create_head_node(config, config_file, no_restart, restart_only, yes,
         modifiers = ""
     print("To monitor auto-scaling activity, you can run:\n\n"
           "  ray exec {} {}{}{}\n".format(config_file, "--docker "
-                                           if use_docker else " ",
-                                           quote(monitor_str), modifiers))
+                                          if use_docker else " ",
+                                          quote(monitor_str), modifiers))
     print("To open a console on the cluster:\n\n"
           "  ray attach {}{}\n".format(config_file, modifiers))
     print("To ssh manually to the cluster, run:\n\n"
@@ -323,15 +323,21 @@ def exec_cluster(config_file, cmd, docker, screen, tmux, stop, start,
         [],
         "",
     )
-    if docker:
+
+    def wrap_docker(command):
         container_name = config["docker"]["container_name"]
         if not container_name:
             raise ValueError("Docker container not specified in config.")
-        cmd = with_docker_exec([cmd], container_name=container_name)[0]
+        return with_docker_exec([command], container_name=container_name)[0]
+
+    cmd = wrap_docker(cmd) if docker else cmd
 
     if stop:
-        cmd += ("; ray stop; ray teardown ~/ray_bootstrap_config.yaml --yes "
-                "--workers-only; sudo shutdown -h now")
+        shutdown_cmd = ("ray stop; ray teardown ~/ray_bootstrap_config.yaml "
+                        "--yes --workers-only")
+        shutdown_cmd = wrap_docker(shutdown_cmd) if docker else shutdown_cmd
+        cmd += ("; {}; sudo shutdown -h now".format(shutdown_cmd))
+
     _exec(
         updater,
         cmd,
@@ -375,7 +381,6 @@ def _exec(updater, cmd, screen, tmux, expect_error=False, port_forward=None):
             cmd = " ".join(cmd)
         updater.ssh_cmd(
             cmd,
-            verbose=False,
             allocate_tty=True,
             expect_error=expect_error,
             port_forward=port_forward)
